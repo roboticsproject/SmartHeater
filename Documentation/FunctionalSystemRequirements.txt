@@ -1,0 +1,40 @@
+﻿Functional System Requirements Smart Heater
+Interfaces
+* A Temperature Sensor that gives accurate temperature values between -40°C and 60°C
+* A Hot End to warm up the air
+* A relay to turn the Hot End on and off, specifications depend on Hot End, needs to be controllable with 5V Signal Voltage
+* A Fan to Control Air Flow over the Hot End, 12V would be best
+* A Transistor to Control the Fan, 5V Signal, 12V Source
+* A 12V to 5V Buck Converter to Power the SMT32H745-Q Board, Output 500mA
+* A CAN-Bus Chip to communicate with other devices
+* A display with at least 5x2 Characters
+* 2 Buttons for Target Temperature Input in 1K steps
+* A vibrator or audio element if an error is detected
+Unclear specifications in System Requirements
+* A dedicated pin for high impedance state measurement is required, but no error code or logic is specified
+* A vibration or audio sensor is required to detect failures of the fan, but no error codes or logic is specified
+* The two push buttons to increase/decrease the target temperature are not in the system requirements, only input through display is defined, so a touch display could be wanted
+* The AccumulatedLapsedTimePercent and Timeout are explained in a very confused way, more explanation is required for implementation, and which current draw is not defined, current draw of hot end makes the most sense, shutoff of the software fuse is also not really defined
+* Req 1.5 sounds like only the fan is controlled and not the hot end, but then 2.2.3.1 sounds like the hot end is used to control the room temperature
+* PGN61495 is understood to be sent from a controlling device to the Smart Heater, but is set to a PDU for BAM (240), why not peer to peer?
+* PGN61495 is called Setpoint because it is understood to be the target temperature set message, but contains SPN5825 which is called measured temperature, though target temperature would be more equivalent. If this is done because target and measured temperature can have the same datatype, then why does SPN110 exist?
+* PGN65263 is understood to be the broadcast from the Smart Heater with its current measured temperature, but there is no temperature request PGN defined, even tho 2.3.1.1 defines that i shall only transmit if requested from another device
+* PGN65263 Suspect Parameters include Parameters that don’t belong to the Smart Heater, would they also be required to be transmitted as they need to come in the byte areas before the Cabin Internal Temperature Parameter. The IDs of the SPNs also don’t fit with the later definition of SPN110 Cabin Air Temperature (Internal). Probably that should have been the explanation for SPN1134 Cabin Internal Temperature, but it has the ID 110 of the Engine Coolant Temperature
+Logic
+* The temperature needs to be measured with a minimum resolution of 1°C/bit, in a 100K Temperature Range (-40°C - 60°C)
+* The rolling average of the current temperature measurement should consist of 16 coefficients
+* Every 10ms a software fuse needs to run, which measures the current draw of the hot end and fire the fuse if the current is over or equal the rated current draw of the driver circuit
+* The software fuse should also fire if a AccumulatedLapsedTimePercent is over 100% or the calculated timeout for this to happen is zero
+* If a software fuse is blown the error “overload or grounded circuit” needs to be activated
+* If the measured average temperature is at least 60°C for 7s the error “Data Valid but Above Normal Operational” needs to be activated
+* If the measured average temperature is below 50°C the error “Data Valid but Above Normal Operational” needs to be deactivated
+* If the measured average temperature is below 0°C the error “Data Valid but Below Normal Operational Range” needs to be activated
+* If the measured average temperature is above 0°C the error “Data Valid but Below Normal Operational Range” needs to be deactivated
+* If the measured temperature is below -40°C or above 60°C the error “Data Erratic, Intermittent or Incorrect” needs to be activated
+* If the measured temperature is between -40°C and 60°C the error “Data Erratic, Intermittent or Incorrect” needs to be deactivated
+* If the source voltage feedback is above the EOLMaxThreshold for CircFltTiOutEol the error “Voltage Above Normal, or Shorted to High Source” needs to be activated
+* If the source voltage feedback is below the EOLMaxThreshold the error “Voltage Above Normal, or Shorted to High Source” needs to be deactivated
+* If the source voltage feedback is below the EOLMinThreshold for CircFltTiOutEol the error “Voltage Below Normal, or Shorted to Low Source” needs to be activated
+* If the source voltage feedback is above the EOLMinThreshold the error “Voltage Below Normal, or Shorted to Low Source” needs to be deactivated
+* If the source voltage feedback is above the EOLMinThreshold but the current is less then OpenCirclThdEol the error “Current Below Normal or Open Circuit” needs to be activated
+* If the source voltage feedback is above the EOLMinThreshold and the current is at least OpenCirclThdEol the error “Current Below Normal or Open Circuit” needs to be deactivated
